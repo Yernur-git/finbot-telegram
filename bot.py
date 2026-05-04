@@ -16,9 +16,9 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "• расход еда 3000\n"
         "• расход транспорт 1500 такси\n\n"
         "Команды:\n"
-        "/месяц — сводка за текущий месяц\n"
-        "/анализ — AI анализ твоих финансов\n"
-        "/помощь — категории"
+        "/month — сводка за текущий месяц\n"
+        "/analysis — AI анализ твоих финансов\n"
+        "/help — категории"
     )
 
 async def help_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -115,9 +115,9 @@ def main():
     token = os.environ["TELEGRAM_TOKEN"]
     app = Application.builder().token(token).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("месяц", month_cmd))
-    app.add_handler(CommandHandler("анализ", analysis_cmd))
-    app.add_handler(CommandHandler("помощь", help_cmd))
+    app.add_handler(CommandHandler("month", month_cmd))
+    app.add_handler(CommandHandler("analysis", analysis_cmd))
+    app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
 
