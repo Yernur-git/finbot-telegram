@@ -47,8 +47,10 @@ def get_monthly_summary(raw=False):
             except:
                 continue
 
-    income  = sum(float(str(r[4]).replace(" ","").replace(",",".")) for r in filtered if len(r)>4 and r[1] == "Доход")
-    expense = sum(float(str(r[4]).replace(" ","").replace(",",".")) for r in filtered if len(r)>4 and r[1] == "Расход")
+    def parse_amt(s):
+        return float(str(s).replace("\xa0","").replace(" ","").replace(",","."))
+    income  = sum(parse_amt(r[4]) for r in filtered if len(r)>4 and r[1] == "Доход")
+    expense = sum(parse_amt(r[4]) for r in filtered if len(r)>4 and r[1] == "Расход")
     balance = income - expense
     goal    = 200000
 
