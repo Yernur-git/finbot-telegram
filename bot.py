@@ -35,24 +35,31 @@ async def help_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def month_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Загружаю данные...")
-    summary = get_monthly_summary()
-    await update.message.reply_text(summary)
+    try:
+        summary = get_monthly_summary()
+        await update.message.reply_text(summary)
+    except Exception as e:
+        logging.error(e)
+        await update.message.reply_text(f"Ошибка: {e}")
 
 async def analysis_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Анализирую...")
-    summary = get_monthly_summary(raw=True)
-    prompt = (
-        f"Вот финансы студента-фрилансера за текущий месяц:\n\n{summary}\n\n"
-        f"Цель: 200 000₸ в месяц. Дай краткий анализ и 2-3 конкретных совета."
-    )
-    response = get_ai_response(prompt)
-    await update.message.reply_text(response)
+    try:
+        summary = get_monthly_summary(raw=True)
+        prompt = (
+            f"Вот финансы студента-фрилансера (съемка/монтаж) за текущий месяц:\n\n{summary}\n\n"
+            f"Цель: 200 000₸ в месяц. Дай краткий анализ (3-4 предложения) и 2-3 конкретных совета."
+        )
+        response = get_ai_response(prompt)
+        await update.message.reply_text(response)
+    except Exception as e:
+        logging.error(e)
+        await update.message.reply_text(f"Ошибка: {e}")
 
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
-    
-    # Parse: [тип] [категория] [сумма] [описание?]
     words = text.split()
+
     if len(words) < 3:
         await update.message.reply_text(
             "Не понял. Пример:\nдоход монтаж 45000\nрасход еда 3000"
@@ -64,12 +71,18 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "расход": "Расход", "расходы": "Расход", "expense": "Расход"
     }
     cat_map = {
-        "стипендия": "Стипендия", "монтаж": "Монтаж",
-        "фото": "Фото-съемка", "видео": "Видео-съемка",
+        "стипендия": "Стипендия",
+        "монтаж": "Монтаж",
+        "фото": "Фото-съемка", "фотосъемка": "Фото-съемка",
+        "видео": "Видео-съемка", "видеосъемка": "Видео-съемка",
         "фриланс": "Фриланс",
-        "еда": "Еда", "транспорт": "Транспорт", "жилье": "Жилье",
-        "связь": "Связь/подписки", "техника": "Техника",
-        "учеба": "Учеба", "развлечения": "Развлечения",
+        "еда": "Еда", "продукты": "Еда",
+        "транспорт": "Транспорт", "такси": "Транспорт",
+        "жилье": "Жилье", "аренда": "Жилье",
+        "связь": "Связь/подписки", "подписки": "Связь/подписки",
+        "техника": "Техника",
+        "учеба": "Учеба",
+        "развлечения": "Развлечения",
         "другое": "Другое", "другой": "Другой доход"
     }
 
@@ -79,37 +92,38 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     cat = cat_map.get(words[1], words[1].capitalize())
-    
+
     amount = None
-    for w in words[2:]:
+    amount_idx = None
+    for i, w in enumerate(words[2:], 2):
         try:
-            amount = float(w.replace(",", "").replace("₸", ""))
+            amount = float(w.replace(",", "").replace("₸", "").replace(" ", ""))
+            amount_idx = i
             break
         except ValueError:
             continue
-    
+
     if not amount:
         await update.message.reply_text("Не нашел сумму. Пример: доход монтаж 45000")
         return
 
-    desc_words = [w for w in words[3:] if not w.replace(",","").replace("₸","").isdigit()]
-    desc = " ".join(desc_words) if desc_words else ""
+    desc_words = [w for i, w in enumerate(words) if i > 1 and i != amount_idx
+                  and not w.replace(",","").replace("₸","").replace(".","").isdigit()]
+    desc = " ".join(desc_words[1:]) if len(desc_words) > 1 else ""
 
     today = datetime.now().strftime("%d.%m.%Y")
-    
+
     try:
-        append_transaction(today, tx_type, cat, desc, amount)
+        append_transaction(today, tx_type, cat, desc, int(amount))
         sign = "+" if tx_type == "Доход" else "-"
         emoji = "💚" if tx_type == "Доход" else "🔴"
-        await update.message.reply_text(
-            f"{emoji} Записал!\n"
-            f"{tx_type} | {cat}\n"
-            f"{sign}{int(amount):,}₸".replace(",", " ")
-            + (f"\n📝 {desc}" if desc else "")
-        )
+        msg = f"{emoji} Записал!\n{tx_type} | {cat}\n{sign}{int(amount):,}₸".replace(",", " ")
+        if desc:
+            msg += f"\n📝 {desc}"
+        await update.message.reply_text(msg)
     except Exception as e:
         logging.error(e)
-        await update.message.reply_text("Ошибка записи в таблицу. Проверь настройки.")
+        await update.message.reply_text(f"Ошибка записи: {e}")
 
 def main():
     token = os.environ["TELEGRAM_TOKEN"]

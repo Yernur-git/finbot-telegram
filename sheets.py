@@ -31,36 +31,41 @@ def get_monthly_summary(raw=False):
     ).execute()
     rows = result.get("values", [])[1:]  # skip header
 
-    # Date stored as DD.MM.YYYY, filter by current MM.YYYY
-    cur_m = datetime.now().strftime("%m.%Y")
+    now = datetime.now()
+    cur_month = now.month
+    cur_year = now.year
+
     filtered = []
     for r in rows:
-        if len(r) >= 5:
-            parts = r[0].split(".")
-            if len(parts) == 3:
-                row_m = f"{parts[1]}.{parts[2]}"
-                if row_m == cur_m:
-                    filtered.append(r)
+        if len(r) >= 5 and r[0]:
+            try:
+                parts = r[0].split(".")
+                if len(parts) == 3:
+                    d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+                    if m == cur_month and y == cur_year:
+                        filtered.append(r)
+            except:
+                continue
 
-    income  = sum(float(r[4]) for r in filtered if r[1] == "Доход")
-    expense = sum(float(r[4]) for r in filtered if r[1] == "Расход")
+    income  = sum(float(str(r[4]).replace(" ","").replace(",",".")) for r in filtered if len(r)>4 and r[1] == "Доход")
+    expense = sum(float(str(r[4]).replace(" ","").replace(",",".")) for r in filtered if len(r)>4 and r[1] == "Расход")
     balance = income - expense
     goal    = 200000
 
     if raw:
-        lines = "\n".join([f"{r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]}₸" for r in filtered])
+        lines = "\n".join([f"{r[0]} | {r[1]} | {r[2]} | {r[3] if len(r)>3 else ''} | {r[4]}₸" for r in filtered])
         return (
-            f"Месяц: {datetime.now().strftime('%B %Y')}\n"
-            f"Доход: {income:,.0f}₸\nРасход: {expense:,.0f}₸\nОстаток: {balance:,.0f}₸\n\n"
+            f"Месяц: {now.strftime('%B %Y')}\n"
+            f"Доход: {int(income):,}₸\nРасход: {int(expense):,}₸\nОстаток: {int(balance):,}₸\n\n"
             f"Детали:\n{lines or 'Нет записей'}"
-        )
+        ).replace(",", " ")
 
     pct = int(income / goal * 100) if goal else 0
-    bar_filled = int(pct / 10)
+    bar_filled = min(10, int(pct / 10))
     bar = "█" * bar_filled + "░" * (10 - bar_filled)
 
     return (
-        f"📊 {datetime.now().strftime('%B %Y')}\n\n"
+        f"📊 {now.strftime('%B %Y')}\n\n"
         f"💚 Доход:   {int(income):,}₸\n"
         f"🔴 Расход:  {int(expense):,}₸\n"
         f"💰 Остаток: {int(balance):,}₸\n\n"
