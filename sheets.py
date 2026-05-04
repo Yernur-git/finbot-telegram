@@ -31,20 +31,21 @@ def get_monthly_summary(raw=False):
     ).execute()
     rows = result.get("values", [])[1:]  # skip header
 
-    cur_month = datetime.now().strftime("%m.%Y")
-    month_rows = []
-    for r in rows:
-        if len(r) >= 5 and r[0].endswith(cur_month[-7:].replace(".", ".")[-5:]):
-            month_rows.append(r)
-
-    # filter by current month (DD.MM.YYYY format)
+    # Date stored as DD.MM.YYYY, filter by current MM.YYYY
     cur_m = datetime.now().strftime("%m.%Y")
-    filtered = [r for r in rows if len(r) >= 5 and ".".join(r[0].split(".")[1:]) == cur_m]
+    filtered = []
+    for r in rows:
+        if len(r) >= 5:
+            parts = r[0].split(".")
+            if len(parts) == 3:
+                row_m = f"{parts[1]}.{parts[2]}"
+                if row_m == cur_m:
+                    filtered.append(r)
 
-    income = sum(float(r[4]) for r in filtered if r[1] == "Доход")
+    income  = sum(float(r[4]) for r in filtered if r[1] == "Доход")
     expense = sum(float(r[4]) for r in filtered if r[1] == "Расход")
     balance = income - expense
-    goal = 200000
+    goal    = 200000
 
     if raw:
         lines = "\n".join([f"{r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]}₸" for r in filtered])
@@ -60,10 +61,10 @@ def get_monthly_summary(raw=False):
 
     return (
         f"📊 {datetime.now().strftime('%B %Y')}\n\n"
-        f"💚 Доход:   {income:>10,.0f}₸\n"
-        f"🔴 Расход:  {expense:>10,.0f}₸\n"
-        f"💰 Остаток: {balance:>10,.0f}₸\n\n"
+        f"💚 Доход:   {int(income):,}₸\n"
+        f"🔴 Расход:  {int(expense):,}₸\n"
+        f"💰 Остаток: {int(balance):,}₸\n\n"
         f"🎯 Цель 200 000₸\n"
         f"[{bar}] {pct}%\n"
-        f"Осталось: {max(0, goal-income):,.0f}₸"
+        f"До цели: {max(0, int(goal-income)):,}₸"
     ).replace(",", " ")
