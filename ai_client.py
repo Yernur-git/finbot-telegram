@@ -6,7 +6,7 @@ API_KEY  = os.environ.get("AI_API_KEY", "")
 
 # Модели по умолчанию для каждого провайдера
 DEFAULT_MODELS = {
-    "openrouter": "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter": "meta-llama/llama-3.2-3b-instruct:free",
     "claude":     "claude-haiku-4-5-20251001",
     "openai":     "gpt-4o-mini",
     "gemini":     "gemini-1.5-flash"
